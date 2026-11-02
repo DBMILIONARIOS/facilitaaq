@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Painel Pix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Este arquivo NÃO tem mais credenciais — ele chama a function
+   /.netlify/functions/create-pix, que roda no servidor da Netlify
+   e é a única a falar com a API da PropixBR. Configure as
+   variáveis de ambiente no painel da Netlify (ver README).
+   ============================================================ */
+
+:root {
+  --ink: #0b1120;
+  --ink-soft: #121a2e;
+  --ink-line: #232d45;
+  --paper: #f7f5ef;
+  --paper-line: #e3dfd2;
+  --teal: #00b3a4;
+  --teal-deep: #007a70;
+  --teal-glow: rgba(0, 179, 164, 0.35);
+  --amber: #ffb020;
+  --red: #ef5b5b;
+  --slate: #94a0b6;
+  --slate-dark: #5b6472;
+  --white: #f7f5ef;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", monospace;
+  --radius: 18px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+button { font-family: inherit; cursor: pointer; }
+::selection { background: var(--teal); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.eyebrow .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 0 4px var(--teal-glow);
+}
+
+.ticket {
+  --ticket-bg: var(--paper);
+  --ticket-notch: var(--ink);
+  --ticket-line: var(--paper-line);
+  position: relative;
+  background: var(--ticket-bg);
+  color: var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.5);
+}
+.ticket__top, .ticket__bottom { padding: 28px 28px; }
+.ticket__perf {
+  position: relative; height: 0;
+  border-top: 2px dashed var(--ticket-line);
+}
+.ticket__perf::before, .ticket__perf::after {
+  content: ""; position: absolute; top: -12px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--ticket-notch);
+}
+.ticket__perf::before { left: -12px; }
+.ticket__perf::after { right: -12px; }
+
+.btn {
+  border: none; border-radius: 999px;
+  font-family: var(--font-display); font-weight: 600; font-size: 15px;
+  padding: 14px 26px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--teal); color: var(--ink); box-shadow: 0 10px 30px -10px var(--teal-glow); }
+.btn-primary:hover { background: #17c4b5; }
+.btn-primary:disabled { background: var(--ink-line); color: var(--slate); box-shadow: none; cursor: not-allowed; }
+.btn-outline-dark { background: transparent; border: 1px solid rgba(11,17,32,0.18); color: var(--ink); }
+.btn-outline-dark:hover { border-color: var(--ink); }
+.btn-block { width: 100%; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+/* ---- Admin view ---- */
+body.admin { background: var(--ink); color: var(--white); min-height: 100vh; }
+.shell { max-width: 1120px; margin: 0 auto; padding: 48px 24px 80px; }
+header.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 44px; flex-wrap: wrap; gap: 16px; }
+header.page-head h1 { font-family: var(--font-display); font-size: 28px; margin: 10px 0 0; letter-spacing: -0.01em; }
+.admin .eyebrow { color: var(--teal); }
+.layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(320px,420px); gap: 32px; align-items: start; }
+@media (max-width: 880px) { .layout { grid-template-columns: 1fr; } }
+.panel { background: var(--ink-soft); border: 1px solid var(--ink-line); border-radius: var(--radius); padding: 32px; }
+.panel h2 { font-family: var(--font-display); font-size: 18px; margin: 0 0 24px; font-weight: 600; }
+.field { margin-bottom: 18px; }
+.field label { display: block; font-size: 13px; color: var(--slate); margin-bottom: 7px; font-weight: 500; }
+.field input {
+  width: 100%; background: var(--ink); border: 1px solid var(--ink-line); border-radius: 10px;
+  padding: 13px 14px; color: var(--white); font-family: var(--font-body); font-size: 15px;
+}
+.field input:focus { border-color: var(--teal); outline: none; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
+.amount-field input { font-family: var(--font-mono); font-size: 22px; font-weight: 600; }
+.amount-prefix { position: relative; }
+.amount-prefix::before {
+  content: "R$"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--slate); font-family: var(--font-mono); font-size: 15px; pointer-events: none;
+}
+.amount-prefix input { padding-left: 44px; }
+.form-error {
+  background: rgba(239,91,91,0.1); border: 1px solid rgba(239,91,91,0.35); color: #ff9a9a;
+  padding: 12px 14px; border-radius: 10px; font-size: 13.5px; margin-bottom: 18px; display: none;
+}
+.preview-wrap { position: sticky; top: 32px; }
+.preview-label { color: var(--slate); font-size: 13px; margin-bottom: 14px; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
+  background: rgba(255,176,32,0.15); color: #b57200; margin-bottom: 16px;
+}
+.status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
+.ticket-amount-label { font-size: 12.5px; color: var(--slate-dark); margin: 0 0 4px; }
+.ticket-amount { font-family: var(--font-mono); font-size: 40px; font-weight: 600; line-height: 1; margin: 0 0 18px; }
+.ticket-meta { font-size: 13.5px; color: var(--slate-dark); line-height: 1.7; }
+.ticket-meta b { color: var(--ink); font-weight: 600; }
+.ticket__bottom { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+.qr-holder {
+  width: 168px; height: 168px; border-radius: 12px; background: #fff; display: flex; align-items: center;
+  justify-content: center; overflow: hidden; border: 1px solid var(--paper-line);
+}
+.qr-holder img { width: 100%; height: 100%; display: block; }
+.link-row { display: flex; gap: 8px; width: 100%; }
+.link-row input {
+  flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 12.5px; border: 1px solid var(--paper-line);
+  background: #fff; border-radius: 8px; padding: 10px 12px; color: var(--ink);
+}
+.copy-btn {
+  border: 1px solid var(--paper-line); background: #fff; border-radius: 8px; padding: 10px 14px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink); white-space: nowrap;
+}
+.copy-btn:hover { border-color: var(--teal); color: var(--teal-deep); }
+.empty-note { color: var(--slate-dark); font-size: 13.5px; line-height: 1.6; }
+.setup-note {
+  margin-top: 28px; font-size: 12.5px; color: var(--slate); line-height: 1.7;
+  border-top: 1px solid var(--ink-line); padding-top: 18px;
+}
+.setup-note code { background: var(--ink); border: 1px solid var(--ink-line); padding: 1px 6px; border-radius: 5px; font-family: var(--font-mono); font-size: 11.5px; }
+.risk-banner {
+  background: rgba(255,176,32,0.12); border: 1px solid rgba(255,176,32,0.4); color: #ffcf80;
+  border-radius: 12px; padding: 14px 16px; font-size: 12.5px; line-height: 1.6; margin-bottom: 28px;
+}
+
+/* ---- Client view ---- */
+body.client { background: var(--paper); color: var(--ink); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 16px; }
+.stage { width: 100%; max-width: 420px; animation: rise 0.5s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+.client .brand { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 22px; color: var(--slate-dark); }
+.client .ticket { --ticket-notch: var(--paper); box-shadow: 0 30px 70px -30px rgba(11,17,32,0.35); }
+.client .ticket__top { text-align: center; padding-top: 32px; }
+.desc { font-size: 13.5px; color: var(--slate-dark); margin: 0 0 6px; }
+.amount { font-family: var(--font-mono); font-size: 46px; font-weight: 600; line-height: 1; margin: 0 0 6px; }
+.recipient { font-size: 12.5px; color: var(--slate-dark); margin: 0 0 24px; }
+.timer {
+  font-family: var(--font-mono); font-size: 12.5px; color: var(--slate-dark); background: rgba(11,17,32,0.05);
+  border-radius: 999px; padding: 8px 16px; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.timer b { color: var(--ink); font-weight: 600; }
+.timer.expired { color: var(--red); background: rgba(239,91,91,0.1); }
+.client .ticket__bottom { padding-bottom: 32px; gap: 18px; }
+.client .qr-holder { width: 200px; height: 200px; border-radius: 14px; margin-top: 6px; }
+.code-label { font-size: 12px; color: var(--slate-dark); margin: 0; }
+.code-box {
+  width: 100%; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6; color: var(--slate-dark);
+  background: rgba(11,17,32,0.04); border: 1px solid var(--paper-line); border-radius: 10px; padding: 12px 14px;
+  word-break: break-all; max-height: 74px; overflow: hidden; text-align: left;
+}
+.client .copy-btn {
+  width: 100%; border: none; background: var(--teal); color: var(--ink); border-radius: 999px; padding: 15px 20px;
+  font-family: var(--font-display); font-weight: 600; font-size: 15px; transition: background 0.15s ease, transform 0.15s ease;
+}
+.client .copy-btn:hover { background: #17c4b5; }
+.client .copy-btn:active { transform: scale(0.98); }
+.client .copy-btn.copied { background: #1f9e5a; }
+.howto { text-align: left; font-size: 12.5px; color: var(--slate-dark); line-height: 1.7; margin: 4px 0 0; padding-left: 18px; }
+.missing { text-align: center; padding: 60px 24px; }
+.missing h1 { font-family: var(--font-display); font-size: 20px; margin-bottom: 10px; }
+.missing p { color: var(--slate-dark); font-size: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   CONFIGURAÇÃO — ajuste aqui
+   ============================================================ */
+function formatBRL(value) {
+  return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function parseAmountToNumber(raw) {
+  // remove tudo que não for dígito, ponto ou vírgula (ex: "R$", espaços)
+  let v = String(raw).replace(/[^\d.,]/g, '');
+  if (v.includes(',')) {
+    // vírgula = separador decimal; ponto (se houver) = separador de milhar
+    v = v.replace(/\./g, '').replace(',', '.');
+  }
+  return Number(v);
+}
+
+const params = new URLSearchParams(window.location.search);
+const isClientView = params.has('id') && params.has('amount') && params.has('code');
+
+document.body.className = isClientView ? 'client' : 'admin';
+
+if (isClientView) {
+  renderClientView();
+} else {
+  renderAdminView();
+}
+
+/* ============================================================
+   VIEW: ADMIN
+   ============================================================ */
+function renderAdminView() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="shell">
+      <header class="page-head">
+        <div>
+          <span class="eyebrow"><span class="dot"></span>PAINEL PIX</span>
+          <h1>Gerar cobrança</h1>
+        </div>
+      </header>
+
+      <div class="layout">
+        <section class="panel">
+          <h2>Dados da cobrança</h2>
+          <div class="form-error" id="formError"></div>
+
+          <form id="pixForm">
+            <div class="field amount-field amount-prefix">
+              <label for="amount">Valor</label>
+              <input type="text" id="amount" inputmode="decimal" placeholder="83,00" required />
+            </div>
+            <div class="field">
+              <label for="description">Descrição da cobrança</label>
+              <input type="text" id="description" placeholder="Ex: Ingresso do evento" />
+            </div>
+            <div class="field">
+              <label for="customerName">Nome do pagador</label>
+              <input type="text" id="customerName" placeholder="Nome completo" required />
+            </div>
+            <div class="field">
+              <label for="customerDocument">CPF ou CNPJ do pagador</label>
+              <input type="text" id="customerDocument" placeholder="Somente números" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Gerar Pix</button>
+          </form>
+
+          <div class="setup-note">
+            Este painel chama a function <code>/.netlify/functions/create-pix</code>,
+            que mantém as credenciais da PropixBR em segredo no servidor. Configure
+            em <b>Site settings → Environment variables</b> da Netlify:
+            <code>PROPIXBR_API_URL</code>, <code>PROPIXBR_CLIENT_ID</code> e
+            <code>PROPIXBR_CLIENT_SECRET</code>.
+          </div>
+        </section>
+
+        <section class="preview-wrap">
+          <div class="preview-label">Pré-visualização do ticket do cliente</div>
+          <div class="ticket" id="ticket">
+            <div class="ticket__top">
+              <p class="empty-note">Preencha o formulário e clique em <b style="color:var(--ink)">Gerar Pix</b> para criar a cobrança. O ticket com QR Code e link para o cliente aparece aqui.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  `;
+
+  const form = document.getElementById('pixForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const formError = document.getElementById('formError');
+  const ticket = document.getElementById('ticket');
+
+  function showError(msg) { formError.textContent = msg; formError.style.display = 'block'; }
+  function clearError() { formError.style.display = 'none'; formError.textContent = ''; }
+
+  function buildPayLink(data) {
+    const fiveMinFromNow = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const p = new URLSearchParams({
+      id: data.id, amount: data.amount, code: data.qr_code, exp: fiveMinFromNow,
+      desc: data.description || '', name: data.customer_name || ''
+    });
+    return `${window.location.origin}${window.location.pathname}?${p.toString()}`;
+  }
+
+  function renderTicket(data) {
+    const link = buildPayLink(data);
+    const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(data.qr_code)}`;
+    ticket.innerHTML = `
+      <div class="ticket__top">
+        <span class="status-pill"><span class="dot"></span>${data.status || 'PENDENTE'}</span>
+        <p class="ticket-amount-label">${data.description}</p>
+        <p class="ticket-amount">${formatBRL(data.amount)}</p>
+        <p class="ticket-meta">Cliente: <b>${data.customer_name}</b><br>ID: <b>${data.id}</b></p>
+      </div>
+      <div class="ticket__perf"></div>
+      <div class="ticket__bottom">
+        <div class="qr-holder"><img src="${qrSrc}" alt="QR Code Pix" /></div>
+        <div class="link-row">
+          <input type="text" readonly value="${link}" id="linkInput" />
+          <button type="button" class="copy-btn" id="copyLinkBtn">Copiar link</button>
+        </div>
+        <a href="${link}" target="_blank" class="btn btn-outline-dark btn-block">Abrir página do cliente ↗</a>
+      </div>
+    `;
+    document.getElementById('copyLinkBtn').addEventListener('click', () => {
+      const input = document.getElementById('linkInput');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        const btn = document.getElementById('copyLinkBtn');
+        const original = btn.textContent;
+        btn.textContent = 'Copiado!';
+        setTimeout(() => { btn.textContent = original; }, 1600);
+      });
+    });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearError();
+
+    const amountRaw = document.getElementById('amount').value.trim();
+    const amountNum = parseAmountToNumber(amountRaw);
+    const name = document.getElementById('customerName').value.trim();
+    const doc = document.getElementById('customerDocument').value.trim().replace(/\D/g, '');
+    const description = document.getElementById('description').value.trim() || 'Cobrança Pix';
+
+    if (!amountNum || amountNum <= 0) return showError('Valor inválido.');
+    if (!name) return showError('Nome do pagador é obrigatório.');
+    if (doc.length < 11) return showError('CPF/CNPJ do pagador é obrigatório.');
+
+    const payload = {
+      amount: amountNum,
+      description,
+      payerName: name,
+      payerDocument: doc,
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Gerando...';
+
+    try {
+      const res = await fetch('/.netlify/functions/create-pix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const raw = await res.json();
+
+      if (!res.ok) {
+        showError(raw.error || `A API recusou a transação (status ${res.status}).`);
+        return;
+      }
+
+      renderTicket({
+        id: raw.id, amount: raw.amount, status: raw.status,
+        qr_code: raw.qr_code, customer_name: raw.customer_name, description: raw.description
+      });
+    } catch (err) {
+      showError('Falha de conexão ao gerar o Pix. Tente novamente.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Gerar Pix';
+    }
+  });
+}
+
+/* ============================================================
+   VIEW: CLIENTE
+   ============================================================ */
+function renderClientView() {
+  const app = document.getElementById('app');
+  const id = params.get('id');
+  const amountCents = params.get('amount');
+  const code = params.get('code');
+  const exp = params.get('exp');
+  const desc = params.get('desc') || 'Cobrança Pix';
+  const name = params.get('name');
+
+  app.innerHTML = `
+    <div class="stage">
+      <div class="brand eyebrow"><span class="dot"></span>PAGAMENTO PIX</div>
+      <div class="ticket" id="ticket"></div>
+    </div>
+  `;
+
+  const ticket = document.getElementById('ticket');
+
+  if (!id || !amountCents || !code) {
+    ticket.innerHTML = `
+      <div class="missing">
+        <h1>Link incompleto</h1>
+        <p>Este link de pagamento está incompleto ou inválido. Peça para quem enviou gerar um novo link no painel Pix.</p>
+      </div>`;
+    return;
+  }
+
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=340x340&margin=8&data=${encodeURIComponent(code)}`;
+
+  ticket.innerHTML = `
+    <div class="ticket__top">
+      <span class="status-pill"><span class="dot"></span>Aguardando pagamento</span>
+      <p class="desc">${desc}</p>
+      <p class="amount">${formatBRL(amountCents)}</p>
+      <div class="timer" id="timer">Calculando prazo…</div>
+    </div>
+    <div class="ticket__perf"></div>
+    <div class="ticket__bottom">
+      <div class="qr-holder"><img src="${qrSrc}" alt="QR Code Pix" /></div>
+      <p class="code-label">Pix Copia e Cola</p>
+      <div class="code-box">${code}</div>
+      <button class="copy-btn" id="copyBtn">Copiar código Pix</button>
+      <ol class="howto">
+        <li>Abra o app do seu banco e escolha pagar com Pix.</li>
+        <li>Escaneie o QR Code ou cole o código copiado.</li>
+        <li>Confirme os dados e finalize o pagamento.</li>
+      </ol>
+    </div>
+  `;
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(code).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Código copiado ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copiar código Pix'; btn.classList.remove('copied'); }, 2000);
+    });
+  });
+
+  if (exp) {
+    const timerEl = document.getElementById('timer');
+    const expDate = new Date(exp);
+    function tick() {
+      const diff = expDate.getTime() - Date.now();
+      if (isNaN(expDate.getTime())) { timerEl.textContent = ''; return; }
+      if (diff <= 0) {
+        timerEl.textContent = 'Este Pix expirou. Peça um novo link.';
+        timerEl.classList.add('expired');
+        clearInterval(interval);
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      const pad = (n) => String(n).padStart(2, '0');
+      timerEl.innerHTML = `Expira em <b>${pad(h)}:${pad(m)}:${pad(s)}</b>`;
+    }
+    tick();
+    const interval = setInterval(tick, 1000);
+  } else {
+    document.getElementById('timer').remove();
+  }
+}
+</script>
+</body>
+</html>
